@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Viewer Radiologia</title>
+
+  <style>
+    /* Faz a página ficar sem margens e toda preta */
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      height: 100%;
+    }
+
+    /* Viewer ocupa a tela inteira (ou o espaço do embed) */
+    .stack-viewer {
+      position: fixed;
+      inset: 0;              /* top:0; right:0; bottom:0; left:0 */
+      overflow: hidden;
+      cursor: ns-resize;     /* cursor de arrastar pra cima/baixo */
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .stack-viewer img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;   /* encaixa sem distorcer */
+      -webkit-user-drag: none; /* desliga arrastar nativo da imagem */
+    }
+  </style>
+</head>
+<body>
+  <!-- ÚNICA COISA NA PÁGINA: o viewer -->
+  <div
+    class="stack-viewer"
+    data-prefix="imagens/slice"
+    data-count="9"
+    data-padding="2"
+    data-ext="png">
+  </div>
+
+  <script>
+    function initStackViewer(container) {
+      const prefix  = container.dataset.prefix;
+      const count   = parseInt(container.dataset.count, 10);
+      const padding = parseInt(container.dataset.padding || "2", 10);
+      const ext     = container.dataset.ext || "png";
+
+      const slices = [];
+      for (let i = 1; i <= count; i++) {
+        const num = String(i).padStart(padding, "0");
+        slices.push(prefix + num + "." + ext);
+      }
+
+      let currentIndex = 0;
+
+      const img = document.createElement("img");
+      img.draggable = false;   // impede arrastar a imagem como arquivo
+      container.appendChild(img);
+
+      function showSlice(index) {
+        if (index < 0) index = 0;
+        if (index >= slices.length) index = slices.length - 1;
+        currentIndex = index;
+        img.src = slices[currentIndex];
+      }
+
+      // Scroll do mouse
+      container.addEventListener("wheel", function(e) {
+        e.preventDefault();
+        if (e.deltaY > 0) {
+          showSlice(currentIndex + 1);
+        } else {
+          showSlice(currentIndex - 1);
+        }
+      }, { passive: false });
+
+      // Arrastar pra cima/baixo
+      let isDragging = false;
+      let startY = 0;
+
+      container.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        isDragging = true;
+        startY = e.clientY;
+      });
+
+      window.addEventListener("mouseup", function() {
+        isDragging = false;
+      });
+
+      window.addEventListener("mousemove", function(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        const dy = e.clientY - startY;
+        const step = 10;
+        if (Math.abs(dy) >= step) {
+          const direction = dy > 0 ? 1 : -1;
+          showSlice(currentIndex + direction);
+          startY = e.clientY;
+        }
+      });
+
+      showSlice(0);
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const viewers = document.querySelectorAll(".stack-viewer");
+      viewers.forEach(initStackViewer);
+    });
+  </script>
+</body>
+</html>
+
