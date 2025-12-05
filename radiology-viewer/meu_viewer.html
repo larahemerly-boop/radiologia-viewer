@@ -2,35 +2,23 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Viewer simples de Radiologia</title>
+  <title>Viewer Radiologia</title>
 
-  <!-- ESTILO (APARÊNCIA) -->
   <style>
-    body {
+    /* Faz a página ficar sem margens e toda preta */
+    html, body {
       margin: 0;
-      padding: 20px;
-      background: #111;
-      color: #fff;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    h1 {
-      margin-top: 0;
-    }
-
-    .stack-viewer {
-      position: relative;
-      width: 100%;
-      max-width: 512px;        /* largura máxima do viewer */
-      aspect-ratio: 1 / 1;     /* mantém quadrado */
-      margin: 1rem 0;
-      overflow: hidden;
-      border: 2px solid #555;
-      border-radius: 8px;
+      padding: 0;
       background: #000;
-      cursor: ns-resize;       /* cursor de arrastar pra cima/baixo */
+      height: 100%;
+    }
 
-      /* impede seleção de texto / arrasto estranho */
+    /* Viewer ocupa a tela inteira (ou o espaço do embed) */
+    .stack-viewer {
+      position: fixed;
+      inset: 0;              /* top:0; right:0; bottom:0; left:0 */
+      overflow: hidden;
+      cursor: ns-resize;     /* cursor de arrastar pra cima/baixo */
       user-select: none;
       -webkit-user-select: none;
     }
@@ -38,29 +26,13 @@
     .stack-viewer img {
       width: 100%;
       height: 100%;
-      object-fit: contain;     /* encaixa a imagem sem distorcer */
-      -webkit-user-drag: none; /* desliga arrastar nativo da imagem (Chrome/Safari) */
-    }
-
-    .stack-viewer .info {
-      position: absolute;
-      left: 8px;
-      bottom: 8px;
-      padding: 4px 8px;
-      font-size: 12px;
-      color: #fff;
-      background: rgba(0,0,0,0.5);
-      border-radius: 4px;
+      object-fit: contain;   /* encaixa sem distorcer */
+      -webkit-user-drag: none; /* desliga arrastar nativo da imagem */
     }
   </style>
 </head>
 <body>
-  <h1>Visualizador de Cortes</h1>
-  <p>
-    Use a rodinha do mouse ou clique e arraste <strong>para cima e para baixo</strong> em cima da imagem.
-  </p>
-
-  <!-- AQUI FICA O VIEWER -->
+  <!-- ÚNICA COISA NA PÁGINA: o viewer -->
   <div
     class="stack-viewer"
     data-prefix="imagens/slice"
@@ -69,52 +41,39 @@
     data-ext="png">
   </div>
 
-  <!-- CÓDIGO JAVASCRIPT -->
   <script>
-    // Função que monta o viewer dentro do container
     function initStackViewer(container) {
-      // Lê as informações da div (data-*)
-      const prefix  = container.dataset.prefix;       // ex: "imagens/slice"
-      const count   = parseInt(container.dataset.count, 10); // quantos cortes
-      const padding = parseInt(container.dataset.padding || "2", 10); // zeros
-      const ext     = container.dataset.ext || "png"; // extensão
+      const prefix  = container.dataset.prefix;
+      const count   = parseInt(container.dataset.count, 10);
+      const padding = parseInt(container.dataset.padding || "2", 10);
+      const ext     = container.dataset.ext || "png";
 
-      // Monta a lista de arquivos de imagem
       const slices = [];
       for (let i = 1; i <= count; i++) {
-        const num = String(i).padStart(padding, "0"); // 1 → "01"
+        const num = String(i).padStart(padding, "0");
         slices.push(prefix + num + "." + ext);
       }
 
       let currentIndex = 0;
 
-      // Cria os elementos internos
-      const img  = document.createElement("img");
-      const info = document.createElement("div");
-      info.className = "info";
-
-      // MUITO IMPORTANTE: desliga o arrasto nativo da imagem
-      img.draggable = false;
-
+      const img = document.createElement("img");
+      img.draggable = false;   // impede arrastar a imagem como arquivo
       container.appendChild(img);
-      container.appendChild(info);
 
-      // Função que troca o corte mostrado
       function showSlice(index) {
         if (index < 0) index = 0;
         if (index >= slices.length) index = slices.length - 1;
         currentIndex = index;
         img.src = slices[currentIndex];
-        info.textContent = "Corte " + (currentIndex + 1) + " / " + slices.length;
       }
 
-      // Scroll do mouse (rodinha)
+      // Scroll do mouse
       container.addEventListener("wheel", function(e) {
         e.preventDefault();
         if (e.deltaY > 0) {
-          showSlice(currentIndex + 1); // desce → próximo
+          showSlice(currentIndex + 1);
         } else {
-          showSlice(currentIndex - 1); // sobe → anterior
+          showSlice(currentIndex - 1);
         }
       }, { passive: false });
 
@@ -123,7 +82,7 @@
       let startY = 0;
 
       container.addEventListener("mousedown", function(e) {
-        e.preventDefault();        // evita o drag padrão
+        e.preventDefault();
         isDragging = true;
         startY = e.clientY;
       });
@@ -132,26 +91,22 @@
         isDragging = false;
       });
 
-      // Agora escutamos movimento na janela inteira,
-      // não só dentro da div
       window.addEventListener("mousemove", function(e) {
         if (!isDragging) return;
-        e.preventDefault();        // evita comportamento estranho
+        e.preventDefault();
 
         const dy = e.clientY - startY;
-        const step = 10; // quantos pixels para mudar de corte
+        const step = 10;
         if (Math.abs(dy) >= step) {
-          const direction = dy > 0 ? 1 : -1; // arrastou pra baixo ou pra cima
+          const direction = dy > 0 ? 1 : -1;
           showSlice(currentIndex + direction);
           startY = e.clientY;
         }
       });
 
-      // Mostra o primeiro corte
       showSlice(0);
     }
 
-    // Quando a página terminar de carregar, inicia todos os viewers
     document.addEventListener("DOMContentLoaded", function() {
       const viewers = document.querySelectorAll(".stack-viewer");
       viewers.forEach(initStackViewer);
